@@ -1,2 +1,13 @@
 ---
-- host: all
+- host: rpi
+
+  vars:
+    pip_package: python3-pip
+    docker_pip_executable: pip3
+    docker_install_compose: true
+    docker_users:
+      - pi
+
+  roles:
+    - geerlingguy.pip
+    - geerlingguy.docker_arm  
