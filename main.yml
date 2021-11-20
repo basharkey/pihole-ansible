@@ -27,6 +27,7 @@
     - name: Set timezone
       timezone:
         name: "{{ timezone }}"
+      become: yes
     
     - name: Create directory structure
       file:
