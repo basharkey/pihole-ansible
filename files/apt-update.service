@@ -1,0 +1,10 @@
+[Unit]
+Description=Updates apt packages
+Wants=apt-update.timer
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/apt-update.sh
+
+[Install]
+WantedBy=multi-user.target

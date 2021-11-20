@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly docker container update
+
+[Timer]
+Unit=docker-update.service
+OnCalendar=Sun 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,5 +1,16 @@
 ---
-- host: rpi
+- hosts: rpi
+
+  vars_prompt:
+    - name: pi_password
+      prompt: "new password for pi user"
+      private: yes
+      encrypt: sha512_crypt
+      confirm: yes
+    - name: web_password
+      prompt: "pihole web UI password"
+      private: yes
+      confirm: yes
 
   vars:
     pip_package: python3-pip
@@ -9,5 +20,115 @@
       - pi
 
   roles:
-    - geerlingguy.pip
-    - geerlingguy.docker_arm  
+    - { role: geerlingguy.pip, become: yes }
+    - { role: geerlingguy.docker_arm, become: yes }
+
+  tasks:
+    - name: Set timezone
+      timezone:
+        name: "{{ timezone }}"
+    
+    - name: Create directory structure
+      file:
+        path: /home/pi/pihole/volumes/lighttpd/ssl/
+        state: directory
+
+    - name: Template lighttpd external.conf 
+      template:
+        src: external.conf.j2
+        dest: /home/pi/pihole/volumes/lighttpd/external.conf
+        force: yes
+
+    - name: Template docker-compose.yml
+      template:
+        src: docker-compose.yml.j2
+        dest: /home/pi/pihole/docker-compose.yml
+        force: yes
+
+    - name: Check if PEM exists on rpi
+      stat:
+        path: "/home/pi/pihole/volumes/lighttpd/ssl/{{ ssl_pem }}"
+      register: rpi_pem
+
+    - name: Check for PEM in project root dir
+      delegate_to: localhost
+      stat:
+        path: "{{ ssl_pem }}"
+      register: root_pem
+
+    - name: Check for PEM in files dir
+      delegate_to: localhost
+      stat:
+        path: "files/{{ ssl_pem }}"
+      register: files_pem
+
+    - name: Generate lighttpd certificate
+      when: not root_pem.stat.exists and not files_pem.stat.exists and not rpi_pem.stat.exists
+      block:
+        - name: Generate crt and key
+          command: 'openssl req -newkey rsa:4096 -x509 -sha256 -days 3650 -nodes -out {{ server_name }}.crt -keyout {{ server_name }}.key -subj "/CN={{ server_name }}"'
+          args:
+            chdir: /home/pi/pihole/volumes/lighttpd/ssl/
+
+        - name: Generate PEM file
+          shell: "cat {{ server_name }}.key {{ server_name }}.crt > {{ ssl_pem }}"
+          args:
+            chdir: /home/pi/pihole/volumes/lighttpd/ssl/
+
+    - name: Copy existing lighttpd certificate
+      copy:
+        src: "{{ ssl_pem }}"
+        dest: /home/pi/pihole/volumes/lighttpd/ssl/
+      when: (root_pem.stat.exists or files_pem.stat.exists) and not rpi_pem.stat.exists
+
+    - name: Docker-compose up
+      command: docker-compose up -d
+      args:
+        chdir: /home/pi/pihole/
+      become: yes
+
+    - name: Update pi user password
+      user:
+        name: pi
+        password: "{{ pi_password }}"
+      become: yes
+
+    - name: Copy update scripts
+      copy:
+        src: "{{ item }}"
+        dest: /usr/local/bin/
+        mode: "0755"
+      loop:
+        - "apt-update.sh"
+        - "docker-update.sh"
+      become: yes
+
+    - name: Copy update services/timers
+      copy:
+        src: "{{ item }}"
+        dest: /etc/systemd/system/
+      loop:
+        - "apt-update.service"
+        - "apt-update.timer"
+        - "docker-update.service"
+        - "docker-update.timer"
+      become: yes
+
+    - name: Systemd daemon-reload
+      systemd:
+        daemon_reload: yes
+      become: yes
+
+    - name: Enable apt-update.timer
+      systemd:
+        name: apt-update.timer
+        state: started
+        enabled: yes
+      become: yes
+
+    - name: Enable docker-update.timer
+      systemd:
+        name: docker-update.timer
+        state: started
+        enabled: yes
+      become: yes

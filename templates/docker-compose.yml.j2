@@ -1,0 +1,22 @@
+version: "3"
+services:
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    environment:
+      DNSSEC: "true"
+      TZ: "{{ timezone }}"
+      WEBPASSWORD: "{{ web_password }}"
+      PIHOLE_DNS_: "{{ pihole_dns }}"
+    volumes:
+      - "/home/pi/pihole/volumes/pihole/:/etc/pihole/"
+      - "/home/pi/pihole/volumes/dnsmasq/:/etc/dnsmasq.d/"
+      - "/home/pi/pihole/volumes/lighttpd/external.conf:/etc/lighttpd/external.conf"
+      - "/home/pi/pihole/volumes/lighttpd/ssl/:/etc/lighttpd/ssl/"
+    ports:
+      - "0.0.0.0:53:53/tcp"
+      - "0.0.0.0:53:53/udp"
+      - "0.0.0.0:80:80/tcp"
+      - "0.0.0.0:443:443/tcp"
+    restart: unless-stopped

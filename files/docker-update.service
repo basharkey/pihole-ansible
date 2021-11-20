@@ -1,0 +1,13 @@
+[Unit]
+Description=Update docker containers
+Requires=docker.service
+After=docker.service
+Wants=docker-update.timer
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/pihole
+ExecStart=/usr/local/bin/docker-update.sh
+
+[Install]
+WantedBy=multi-user.target

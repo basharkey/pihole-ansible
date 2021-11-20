@@ -1,1 +1,3 @@
-ansible-galaxy install geerlingguy.docker_arm
+# Pihole Ansible
+ansible-galaxy install -r requirements.yml
+ansible-playbook main.yml -i hosts.ini
