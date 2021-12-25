@@ -1,17 +1,6 @@
 ---
 - hosts: rpi
 
-  vars_prompt:
-    - name: pi_password
-      prompt: "new password for pi user"
-      private: yes
-      encrypt: sha512_crypt
-      confirm: yes
-    - name: web_password
-      prompt: "pihole web UI password"
-      private: yes
-      confirm: yes
-
   vars:
     pip_package: python3-pip
     docker_pip_executable: pip3
@@ -88,10 +77,10 @@
         chdir: /home/pi/pihole/
       become: yes
 
-    - name: Update pi user password
+    - name: Update pi user passwd
       user:
         name: pi
-        password: "{{ pi_password }}"
+        passwd: "{{ pi_passwd }}"
       become: yes
 
     - name: Copy update scripts
